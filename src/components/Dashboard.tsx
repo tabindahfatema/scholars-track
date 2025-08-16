@@ -2,11 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, UserCheck, UserX, Clock, TrendingUp, Calendar } from "lucide-react";
-import { storageService } from "@/lib/storage";
-import { useMemo } from "react";
+import { storageService, initializeSampleData } from "@/lib/storage";
+import { useMemo, useEffect } from "react";
 import heroImage from "@/assets/education-hero.jpg";
 
-const Dashboard = () => {
+const Dashboard = ({ onTabChange }: { onTabChange?: (tab: string) => void }) => {
+  // Initialize sample data for new users
+  useEffect(() => {
+    initializeSampleData();
+  }, []);
+
   const stats = useMemo(() => storageService.getAttendanceStats(), []);
   const students = useMemo(() => storageService.getStudents(), []);
   const today = new Date().toISOString().split('T')[0];
@@ -58,11 +63,20 @@ const Dashboard = () => {
                 <h1 className="text-4xl font-bold mb-4">Welcome back, Teacher!</h1>
                 <p className="text-xl opacity-90 mb-6">Track attendance, manage students, and monitor progress all in one place.</p>
                 <div className="flex gap-4">
-                  <Button size="lg" variant="secondary">
+                  <Button 
+                    size="lg" 
+                    variant="secondary"
+                    onClick={() => onTabChange?.('attendance')}
+                  >
                     <Calendar className="w-5 h-5 mr-2" />
                     Mark Today's Attendance
                   </Button>
-                  <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    onClick={() => onTabChange?.('reports')}
+                  >
                     View Reports
                   </Button>
                 </div>
@@ -152,19 +166,34 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full bg-gradient-primary border-0 shadow-lg hover:shadow-xl transition-all">
+            <Button 
+              className="w-full bg-gradient-primary border-0 shadow-lg hover:shadow-xl transition-all"
+              onClick={() => onTabChange?.('attendance')}
+            >
               <UserCheck className="w-4 h-4 mr-2" />
               Mark Attendance
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => onTabChange?.('students')}
+            >
               <Users className="w-4 h-4 mr-2" />
               Manage Students
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => onTabChange?.('reports')}
+            >
               <TrendingUp className="w-4 h-4 mr-2" />
               View Reports
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => onTabChange?.('reports')}
+            >
               <Calendar className="w-4 h-4 mr-2" />
               Attendance History
             </Button>

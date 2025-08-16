@@ -1,13 +1,15 @@
 import { Outlet } from "react-router-dom";
-import { Users, BarChart3, Calendar, Settings } from "lucide-react";
+import { Users, BarChart3, Calendar, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: React.ReactNode;
+  user?: { id: string; email: string; name: string };
+  onLogout: () => void;
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const Layout = ({ children, user, onLogout }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <header className="bg-card border-b shadow-card">
@@ -19,13 +21,16 @@ const Layout = ({ children }: LayoutProps) => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">AttendanceTracker</h1>
-                <p className="text-muted-foreground text-sm">Student Management System</p>
+                <p className="text-muted-foreground text-sm">Welcome back, {user?.name || 'Teacher'}!</p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground hidden sm:block">{user?.email}</span>
+              <Button variant="outline" size="sm" onClick={onLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>

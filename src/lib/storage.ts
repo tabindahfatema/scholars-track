@@ -5,15 +5,26 @@ export interface Student {
   studentId: string;
   class: string;
   joinDate: string;
+  teacherId: string; // Add teacher association
 }
 
 export interface AttendanceRecord {
   id: string;
   studentId: string;
+  teacherId: string; // Add teacher association
   date: string;
   status: 'present' | 'absent' | 'late';
   notes?: string;
 }
+
+const getUserId = (): string => {
+  const user = localStorage.getItem('auth_user');
+  if (user) {
+    const userData = JSON.parse(user);
+    return userData.id;
+  }
+  throw new Error('User not authenticated');
+};
 
 const STUDENTS_KEY = 'attendance_students';
 const ATTENDANCE_KEY = 'attendance_records';
@@ -21,23 +32,50 @@ const ATTENDANCE_KEY = 'attendance_records';
 export const storageService = {
   // Student management
   getStudents(): Student[] {
-    const stored = localStorage.getItem(STUDENTS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const userId = getUserId();
+      const stored = localStorage.getItem(STUDENTS_KEY);
+      const allStudents = stored ? JSON.parse(stored) : [];
+      // Filter students for current user
+      return allStudents.filter((student: Student) => student.teacherId === userId);
+    } catch (error) {
+      return [];
+    }
   },
 
   saveStudents(students: Student[]): void {
-    localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+    try {
+      const userId = getUserId();
+      const stored = localStorage.getItem(STUDENTS_KEY);
+      const allStudents = stored ? JSON.parse(stored) : [];
+      
+      // Remove existing students for this user
+      const otherUsersStudents = allStudents.filter((student: Student) => student.teacherId !== userId);
+      
+      // Add current user's students
+      const updatedStudents = [...otherUsersStudents, ...students];
+      
+      localStorage.setItem(STUDENTS_KEY, JSON.stringify(updatedStudents));
+    } catch (error) {
+      console.error('Error saving students:', error);
+    }
   },
 
-  addStudent(student: Omit<Student, 'id'>): Student {
-    const students = this.getStudents();
-    const newStudent: Student = {
-      ...student,
-      id: crypto.randomUUID(),
-    };
-    students.push(newStudent);
-    this.saveStudents(students);
-    return newStudent;
+  addStudent(student: Omit<Student, 'id' | 'teacherId'>): Student {
+    try {
+      const userId = getUserId();
+      const students = this.getStudents();
+      const newStudent: Student = {
+        ...student,
+        id: crypto.randomUUID(),
+        teacherId: userId,
+      };
+      students.push(newStudent);
+      this.saveStudents(students);
+      return newStudent;
+    } catch (error) {
+      throw new Error('Failed to add student');
+    }
   },
 
   updateStudent(id: string, updates: Partial<Student>): void {
@@ -59,33 +97,60 @@ export const storageService = {
 
   // Attendance management
   getAttendance(): AttendanceRecord[] {
-    const stored = localStorage.getItem(ATTENDANCE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const userId = getUserId();
+      const stored = localStorage.getItem(ATTENDANCE_KEY);
+      const allAttendance = stored ? JSON.parse(stored) : [];
+      // Filter attendance for current user
+      return allAttendance.filter((record: AttendanceRecord) => record.teacherId === userId);
+    } catch (error) {
+      return [];
+    }
   },
 
   saveAttendance(records: AttendanceRecord[]): void {
-    localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(records));
+    try {
+      const userId = getUserId();
+      const stored = localStorage.getItem(ATTENDANCE_KEY);
+      const allAttendance = stored ? JSON.parse(stored) : [];
+      
+      // Remove existing attendance for this user
+      const otherUsersAttendance = allAttendance.filter((record: AttendanceRecord) => record.teacherId !== userId);
+      
+      // Add current user's attendance
+      const updatedAttendance = [...otherUsersAttendance, ...records];
+      
+      localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(updatedAttendance));
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+    }
   },
 
   markAttendance(studentId: string, date: string, status: AttendanceRecord['status'], notes?: string): void {
-    const records = this.getAttendance();
-    const existingIndex = records.findIndex(r => r.studentId === studentId && r.date === date);
-    
-    const record: AttendanceRecord = {
-      id: existingIndex !== -1 ? records[existingIndex].id : crypto.randomUUID(),
-      studentId,
-      date,
-      status,
-      notes,
-    };
+    try {
+      const userId = getUserId();
+      const records = this.getAttendance();
+      const existingIndex = records.findIndex(r => r.studentId === studentId && r.date === date);
+      
+      const record: AttendanceRecord = {
+        id: existingIndex !== -1 ? records[existingIndex].id : crypto.randomUUID(),
+        studentId,
+        teacherId: userId,
+        date,
+        status,
+        notes,
+      };
 
-    if (existingIndex !== -1) {
-      records[existingIndex] = record;
-    } else {
-      records.push(record);
+      if (existingIndex !== -1) {
+        records[existingIndex] = record;
+      } else {
+        records.push(record);
+      }
+      
+      this.saveAttendance(records);
+    } catch (error) {
+      throw new Error('Failed to mark attendance');
     }
-    
-    this.saveAttendance(records);
   },
 
   getAttendanceByDate(date: string): AttendanceRecord[] {
@@ -116,38 +181,47 @@ export const storageService = {
   }
 };
 
-// Initialize with sample data if empty
-if (storageService.getStudents().length === 0) {
-  const sampleStudents = [
-    {
-      name: "Alice Johnson",
-      email: "alice.johnson@school.edu",
-      studentId: "ST001",
-      class: "10-A",
-      joinDate: "2024-01-15"
-    },
-    {
-      name: "Bob Smith",
-      email: "bob.smith@school.edu", 
-      studentId: "ST002",
-      class: "10-A",
-      joinDate: "2024-01-16"
-    },
-    {
-      name: "Carol Davis",
-      email: "carol.davis@school.edu",
-      studentId: "ST003", 
-      class: "10-B",
-      joinDate: "2024-01-17"
-    },
-    {
-      name: "David Wilson",
-      email: "david.wilson@school.edu",
-      studentId: "ST004",
-      class: "10-A", 
-      joinDate: "2024-01-18"
+// Initialize with sample data only for new users
+export const initializeSampleData = () => {
+  try {
+    const userId = getUserId();
+    const existingStudents = storageService.getStudents();
+    
+    if (existingStudents.length === 0) {
+      const sampleStudents = [
+        {
+          name: "Alice Johnson",
+          email: "alice.johnson@school.edu",
+          studentId: "ST001",
+          class: "10-A",
+          joinDate: "2024-01-15"
+        },
+        {
+          name: "Bob Smith",
+          email: "bob.smith@school.edu", 
+          studentId: "ST002",
+          class: "10-A",
+          joinDate: "2024-01-16"
+        },
+        {
+          name: "Carol Davis",
+          email: "carol.davis@school.edu",
+          studentId: "ST003", 
+          class: "10-B",
+          joinDate: "2024-01-17"
+        },
+        {
+          name: "David Wilson",
+          email: "david.wilson@school.edu",
+          studentId: "ST004",
+          class: "10-A", 
+          joinDate: "2024-01-18"
+        }
+      ];
+      
+      sampleStudents.forEach(student => storageService.addStudent(student));
     }
-  ];
-  
-  sampleStudents.forEach(student => storageService.addStudent(student));
-}
+  } catch (error) {
+    // User not authenticated, skip sample data
+  }
+};
